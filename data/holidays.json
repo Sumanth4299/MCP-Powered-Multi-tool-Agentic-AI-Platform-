@@ -1,0 +1,21 @@
+[
+  {"name": "Republic Day", "date": "2026-01-26", "region": "India", "category": "Gazetted"},
+  {"name": "Maha Shivratri", "date": "2026-02-15", "region": "India", "category": "Gazetted"},
+  {"name": "Holi", "date": "2026-03-04", "region": "India", "category": "Gazetted"},
+  {"name": "Eid-ul-Fitr", "date": "2026-03-21", "region": "India", "category": "Gazetted"},
+  {"name": "Mahavir Jayanti", "date": "2026-03-31", "region": "India", "category": "Gazetted"},
+  {"name": "Good Friday", "date": "2026-04-03", "region": "India", "category": "Gazetted"},
+  {"name": "Buddha Purnima", "date": "2026-05-31", "region": "India", "category": "Gazetted"},
+  {"name": "Bakrid / Eid-ul-Adha", "date": "2026-05-27", "region": "India", "category": "Gazetted"},
+  {"name": "Muharram", "date": "2026-06-26", "region": "India", "category": "Gazetted"},
+  {"name": "Independence Day", "date": "2026-08-15", "region": "India", "category": "Gazetted"},
+  {"name": "Milad-un-Nabi", "date": "2026-08-26", "region": "India", "category": "Gazetted"},
+  {"name": "Mahatma Gandhi Jayanti", "date": "2026-10-02", "region": "India", "category": "Gazetted"},
+  {"name": "Dussehra (Vijay Dashami)", "date": "2026-10-20", "region": "India", "category": "Gazetted"},
+  {"name": "Diwali (Deepavali)", "date": "2026-11-08", "region": "India", "category": "Gazetted"},
+  {"name": "Guru Nanak Jayanti", "date": "2026-11-24", "region": "India", "category": "Gazetted"},
+  {"name": "Christmas Day", "date": "2026-12-25", "region": "India", "category": "Gazetted"},
+  {"name": "Telangana Formation Day", "date": "2026-06-02", "region": "Telangana", "category": "State Public"},
+  {"name": "Bonalu", "date": "2026-07-20", "region": "Telangana", "category": "State Public"},
+  {"name": "Bathukamma", "date": "2026-10-10", "region": "Telangana", "category": "State Public"}
+]
