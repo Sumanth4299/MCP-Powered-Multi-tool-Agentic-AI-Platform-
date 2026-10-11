@@ -167,3 +167,26 @@ async def test_cross_chat_retrieval(authed_client: AsyncClient, mock_user: User)
     tasks = json.loads(search_res)
     assert len(tasks) == 1
     assert tasks[0]["title"] == "Prepare Final Year Defense Slides"
+
+
+@pytest.mark.asyncio
+async def test_federated_create_task_uses_authenticated_context(mock_user: User):
+    from sqlalchemy import select
+
+    from backend.agent.tools import get_federated_tools
+    from backend.models.task import Task
+
+    tools = await get_federated_tools(mock_user.id)
+    create_task_tool = next(tool for tool in tools if tool.name == "create_task")
+
+    result = json.loads(await create_task_tool.ainvoke({"title": "Context-scoped task"}))
+
+    assert result["title"] == "Context-scoped task"
+    async with TestingSessionLocal() as session:
+        task = (
+            await session.execute(
+                select(Task).where(Task.title == "Context-scoped task")
+            )
+        ).scalar_one()
+
+    assert task.user_id == mock_user.id

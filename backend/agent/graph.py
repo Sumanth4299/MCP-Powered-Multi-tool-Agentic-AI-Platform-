@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 import json
 from typing import Any, Literal
 import uuid
+from zoneinfo import ZoneInfo
 
 from langchain_core.messages import AIMessage, SystemMessage, ToolMessage
 from langchain_core.tools import StructuredTool
@@ -17,6 +18,22 @@ from backend.config import get_settings
 
 
 settings = get_settings()
+
+
+def _current_datetime_instruction(now: datetime) -> str:
+    local_now = now.astimezone(ZoneInfo("Asia/Kolkata"))
+    current_time = local_now.strftime("%A, %Y-%m-%d %H:%M:%S")
+    return (
+        f"Current date and time: {current_time} "
+        "(Asia/Kolkata, Hyderabad, Telangana)."
+    )
+
+
+def _build_system_prompt(now: datetime) -> str:
+    return (
+        f"{AGENT_SYSTEM_PROMPT}\n\n"
+        f"{_current_datetime_instruction(now)}"
+    )
 
 
 def build_llm(tools: list[StructuredTool]) -> Any:
@@ -37,11 +54,27 @@ async def agent_node(state: AgentState) -> dict[str, Any]:
     llm = build_llm(tools)
 
     messages = list(state["messages"])
+    now = datetime.now(ZoneInfo("Asia/Kolkata"))
 
     if not messages or not isinstance(messages[0], SystemMessage):
         messages.insert(
             0,
-            SystemMessage(content=AGENT_SYSTEM_PROMPT),
+            SystemMessage(content=_build_system_prompt(now)),
+        )
+    elif isinstance(messages[0].content, str):
+        system_content = messages[0].content.split(
+            "\n\nCurrent date and time:", maxsplit=1
+        )[0]
+        messages[0] = SystemMessage(
+            content=(
+                f"{system_content}\n\n"
+                f"{_current_datetime_instruction(now)}"
+            )
+        )
+    else:
+        messages.insert(
+            1,
+            SystemMessage(content=_current_datetime_instruction(now)),
         )
 
     response = await llm.ainvoke(messages)

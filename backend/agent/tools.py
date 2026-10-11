@@ -7,9 +7,15 @@ from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, create_model
 
 from backend.mcp.client import MCPTaskClientAdapter
-from mcp_servers.calendar_server import mcp as calendar_mcp
+from mcp_servers.calendar_server import (
+    current_user_id_ctx as calendar_user_id_ctx,
+    mcp as calendar_mcp,
+)
 from mcp_servers.holiday_server import mcp as holiday_mcp
-from mcp_servers.task_server import mcp as task_mcp
+from mcp_servers.task_server import (
+    current_user_id_ctx as task_user_id_ctx,
+    mcp as task_mcp,
+)
 
 
 def make_pydantic_model(
@@ -73,27 +79,77 @@ def convert_fastmcp_to_langchain(
         input_schema = getattr(tool, "input_schema", None)
 
     if input_schema is None:
+        input_schema = getattr(tool, "parameters", None)
+
+    if input_schema is None:
         input_schema = {}
 
+    properties = input_schema.get("properties", {})
+    if "ctx" in properties:
+        input_schema = {
+            **input_schema,
+            "properties": {
+                key: value for key, value in properties.items() if key != "ctx"
+            },
+            "required": [
+                key for key in input_schema.get("required", []) if key != "ctx"
+            ],
+        }
+
     args_schema = make_pydantic_model(input_schema, name)
+    tool_param_names = input_schema.get("properties", {}).keys()
 
     async def _coro(**kwargs: Any) -> str:
         arguments = dict(kwargs)
 
-        if user_id is not None:
+        if user_id is not None and "user_id" in tool_param_names:
             arguments["user_id"] = str(user_id)
+        elif arguments.get("user_id") is None:
+            arguments.pop("user_id", None)
 
-        # Invoke the registered FastMCP tool.
-        result = await server._tool_manager.call_tool(
-            name,
-            arguments,
-        )
+        context_tokens = []
+        if user_id is not None and server is task_mcp:
+            context_tokens.append((task_user_id_ctx, task_user_id_ctx.set(user_id)))
+        elif user_id is not None and server is calendar_mcp:
+            context_tokens.append((calendar_user_id_ctx, calendar_user_id_ctx.set(user_id)))
+
+        try:
+            # Invoke through FastMCP's public API when available.
+            result: Any
+            if hasattr(server, "call_tool"):
+                result = await server.call_tool(name=name, arguments=arguments)
+            elif hasattr(server, "_tool_manager"):
+                result = await server._tool_manager.call_tool(name, arguments)
+            else:
+                raise AttributeError(
+                    f"Server {server} has neither 'call_tool' nor '_tool_manager'."
+                )
+        finally:
+            for context_var, token in reversed(context_tokens):
+                context_var.reset(token)
+
+        if not isinstance(result, (str, dict)):
+            content = getattr(result, "content", None)
+            if isinstance(content, list):
+                result = content
+
+        if isinstance(result, list):
+            extracted = []
+            for item in result:
+                if hasattr(item, "text"):
+                    extracted.append(item.text)
+                elif isinstance(item, dict) and "text" in item:
+                    extracted.append(item["text"])
+                else:
+                    extracted.append(str(item))
+            result = "\n".join(extracted)
 
         if isinstance(result, str):
             return result
 
-        if hasattr(result, "model_dump"):
-            result = result.model_dump(mode="json")
+        model_dump = getattr(result, "model_dump", None)
+        if callable(model_dump):
+            result = model_dump(mode="json")
 
         return json.dumps(result, default=str)
 
